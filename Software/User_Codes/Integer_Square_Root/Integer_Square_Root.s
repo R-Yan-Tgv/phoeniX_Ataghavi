@@ -1,44 +1,41 @@
-# Integer square root function for RISC-V
+# main function
+    .text
+    .globl main
 
-# Arguments:
-# a0 - Input: unsigned 32-bit integer (n)
-# Return:
-# a0 - Output: integer square root of n
+main:
+    # Initialize input number and binary search bounds
+    li a0, 23           # Load input number (23) into a0
+    li t0, 0            # t0 = low = 0 (initialize low bound)
+    mv t1, a0           # t1 = high = a0 (initialize high bound to input number)
+    li t2, 0            # t2 = mid (initialize mid to 0)
+    li t3, 0            # t3 = mid * mid (initialize to 0)
 
-integer_sqrt:
-    li a0, 0              # Initialize return to 0
-    mv t1, a0             # Move a0 to t1
+    # binary_search loop
+binary_search:
+    # Check if low is greater than high
+    bge t0, t1, finish          # if low >= high, exit the loop and finish the search
 
-    li t0, 1
-    slli t0, t0, 30       # Shift to second-to-top bit
+    # Calculate mid = (low + high) / 2
+    add t2, t0, t1              # t2 = low + high
+    srai t2, t2, 1              # t2 = mid = (low + high) / 2 (shift right arithmetic by 1)
 
-isqrt_bit:
-    slt t2, t1, t0        # num < bit
-    beqz t2, isqrt_loop
+    # Compare mid*mid with the input number
+    mul t3, t2, t2              # t3 = mid * mid
+    blt t3, a0, mid_is_too_low  # if mid * mid < input number, search in the upper half
+    bgt t3, a0, mid_is_too_high # if mid * mid > input number, search in the lower half
 
-    srli t0, t0, 2        # bit >> 2
-    j isqrt_bit
+mid_is_exact:
+    mv t1, t2            # if mid * mid == input number, set result to mid
+    j finish              # exit the loop and finish the search
 
-isqrt_loop:
-    beqz t0, isqrt_return
+mid_is_too_low:
+    addi t0, t2, 1       # if mid * mid < input number, set low = mid + 1
+    j binary_search      # repeat the binary search
 
-    add t3, a0, t0        # t3 = return + bit
-    slt t2, t1, t3
-    beqz t2, isqrt_else
+mid_is_too_high:
+    addi t1, t2, -1      # if mid * mid > input number, set high = mid - 1
+    j binary_search      # repeat the binary search
 
-    srli a0, a0, 1        # return >> 1
-    j isqrt_loop_end
-
-isqrt_else:
-    sub t1, t1, t3        # num -= return + bit
-    srli a0, a0, 1        # return >> 1
-    add a0, a0, t0        # return + bit
-
-isqrt_loop_end:
-    srli t0, t0, 2        # bit >> 2
-    j isqrt_loop
-
-isqrt_return:
-    jr ra
-
-ebreak
+finish:
+    mv a0, t1            # result = high (integer square root)
+    ebreak               # end of program (trigger a breakpoint)
